@@ -6,6 +6,7 @@ setup(name='steampy',
       author='Shamil Baysarov',
       author_email='',
       url='',
+      package_dir={'steampy': 'steampy},
       install_requires=[
           'requests',
           'rsa',
