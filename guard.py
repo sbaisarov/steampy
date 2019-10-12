@@ -2,9 +2,15 @@ import base64
 import json
 import struct
 import time
+import logging
+import imaplib
+import re
 
 import hmac
 import hashlib
+
+
+logger = logging.getLogger('__main__')
 
 
 def load_steam_guard(steam_guard: str) -> dict:
@@ -40,3 +46,17 @@ def generate_device_id(steam_id: str) -> str:
                                   hexed_steam_id[12:16],
                                   hexed_steam_id[16:20],
                                   hexed_steam_id[20:32]])
+
+
+def fetch_emailauth(email, email_password, imap_host):
+    server = imaplib.IMAP4_SSL(imap_host)
+    server.login(email, email_password)
+    server.select()
+    result, data = server.uid("search", None, '(HEADER Subject "Access from new web or mobile device")')
+    uid = str(data[1][0].split()[-1])
+    result, data = server.uid("fetch", uid, '(UID BODY[TEXT])')
+    mail = data[1][0][1].decode('utf-8')
+    emailauth = re.search(r'Here is the Steam Guard code you need to login to account .+:\s+(\w{5})\s', mail).group(1)
+    logger.info("EMAILAUTH: %s", emailauth)
+
+    return emailauth

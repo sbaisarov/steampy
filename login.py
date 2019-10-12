@@ -1,13 +1,12 @@
 import base64
 import time
 import json
-import re
-import time
 
 import requests
 import rsa
 
 from steampy import guard
+from steampy.utils import convert_edomain_to_imap
 
 
 class LoginExecutor:
@@ -37,7 +36,7 @@ class LoginExecutor:
         self._check_for_captcha(login_response)
         return login_response
 
-    def _send_login_request(self, mobile_request=False) -> requests.Response:
+    def _send_login_request(self, mobile_request=False):
         one_time_code = ''
         emailauth = ''
         second_attempt = False
@@ -76,10 +75,18 @@ class LoginExecutor:
                 time.sleep(30 - timestamp % 30)  # wait until the next code is generated
                 second_attempt = True
                 continue
+
+            if response.get('emailauth_needed', None):
+                if self.email and self.email_passwd:
+                    imap_host = convert_edomain_to_imap(self.email, "../database/imap-hosts.json")
+                    time.sleep(10)
+                    emailauth = guard.fetch_emailauth(self.email, self.email_passwd, imap_host)
+                    continue
             break
 
         if response is None:
             raise AuthException("Can't log in %s:%s" % (self.username, self.password))
+
         return response
 
     def _fetch_rsa_params(self) -> dict:

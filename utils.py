@@ -3,6 +3,8 @@ import struct
 import time
 import re
 import datetime
+import json
+import logging
 from typing import List
 from imaplib import IMAP4, IMAP4_SSL
 
@@ -26,6 +28,10 @@ class GameOptions(enum.Enum):
             if appid == game_option.value[0]:
                 return game_option
         raise Exception('This appid is not supported by GameOptions: %s' % appid)
+
+
+logger = logging.getLogger("__main__")
+
 
 def fetch_emaiL_code(email, email_passwd, login_name, subject):
     email_domain = email.partition('@')[2]
@@ -70,8 +76,10 @@ def fetch_emaiL_code(email, email_passwd, login_name, subject):
             print('Reconnecting...')
             time.sleep(5)
 
+
 def fetch_email_code_tempmail():
     pass
+
 
 def text_between(text: str, begin: str, end: str) -> str:
     try:
@@ -146,6 +154,25 @@ def update_session(client):
     client.login(client.login_name, client.password,
                  client.mafile)
 
-def get_average_price():
-    pass
 
+def convert_edomain_to_imap(email_domain, additional_hosts={}):
+    host = None
+    domains_and_hosts = {
+        "imap.yandex.ru": ["yandex.ru"],
+        "imap.mail.ru": ["mail.ru", "bk.ru", "list.ru", "inbox.ru", "mail.ua"],
+        "imap.rambler.ru": ["rambler.ru", "lenta.ru", "autorambler.ru", "myrambler.ru", "ro.ru", "rambler.ua"],
+        "imap.gmail.com": ["gmail.com", ],
+        "imap.mail.yahoo.com": ["yahoo.com", ],
+        "imap-mail.outlook.com": ["outlook.com", "hotmail.com"],
+        "imap.aol.com": ["aol.com", ]
+    }
+    for imap_host, domains in additional_hosts.items():
+        try:
+            list(map(lambda domain: domains_and_hosts[imap_host].append(domain), domains))
+        except:
+            domains_and_hosts[imap_host] = domains
+    for host, domains in domains_and_hosts.items():
+        if email_domain in domains:
+            return host
+
+    return host
