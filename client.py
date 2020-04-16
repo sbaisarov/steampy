@@ -4,6 +4,8 @@ import re
 import json
 import logging
 import collections
+import rsa
+import base64
 from typing import List
 
 import requests
@@ -11,9 +13,11 @@ from bs4 import BeautifulSoup
 from steampy import guard
 from steampy.confirmation import ConfirmationExecutor
 from steampy.login import LoginExecutor, InvalidCredentials
-from steampy.utils import text_between, merge_items_with_descriptions_from_inventory, GameOptions, \
+from steampy.utils import text_between, merge_items_with_descriptions_from_inventory, GameOptions, fetch_email_code, \
     steam_id_to_account_id, merge_items_with_descriptions_from_offers, get_description_key, \
     merge_items_with_descriptions_from_offer, account_id_to_steam_id
+
+from selenium.webdriver.common.action_chains import ActionChains
 
 logger = logging.getLogger('__main__')
 
@@ -69,8 +73,8 @@ class SteamClient:
     API_URL = "https://api.steampowered.com"
     COMMUNITY_URL = "https://steamcommunity.com"
     BROWSER_HEADERS = {
-            'User-Agent': ('Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) '
-                           'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Mobile Safari/537.36'),
+            'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                           'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36'),
             'Accept-Language': 'q=0.8,en-US;q=0.6,en;q=0.4'}
     MARKET_CURRENCIES = {'kr': 'Norwegian Krone', 'pуб.': 'Russian Ruble'}
 
@@ -331,11 +335,26 @@ class SteamClient:
                                                      self._session)
         return confirmation_executor.send_trade_allow_request()
 
-    def confirm_transactions(self):
+    def confirm_market_transactions(self):
         confirmation_executor = ConfirmationExecutor('', self.mafile['identity_secret'],
                                                      str(self.mafile['Session']['SteamID']),
                                                      self._session)
         return confirmation_executor.send_markettrans_allow_request()
+    
+    
+    def get_transactions(self):
+        confirmation_executor = ConfirmationExecutor('', self.mafile['identity_secret'],
+                                                     str(self.mafile['Session']['SteamID']),
+                                                     self._session)
+        confirmation_executor._get_confirmations()
+    
+    def change_email(self, login, password, email, email_password, mafile, imap_host, driver):
+        mobile_client = SteamClient()
+        mobile_client.mobile_login(login, password, mafile)
+        confirmation_executor = ConfirmationExecutor('', self.mafile['identity_secret'],
+                                                     str(self.mafile['Session']['SteamID']),
+                                                     mobile_client._session)
+        confirmation_executor.confirm_email_change_confirmation()
 
     def decline_trade_offer(self, trade_offer_id: str) -> dict:
         params = {'key': self._api_key,

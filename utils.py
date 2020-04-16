@@ -33,7 +33,7 @@ class GameOptions(enum.Enum):
 logger = logging.getLogger("__main__")
 
 
-def fetch_emaiL_code(email, email_passwd, login_name, subject):
+def fetch_email_code(email, email_passwd, login_name, imap_server):
     email_domain = email.partition('@')[2]
     if email_domain == 'yandex.ru' or email_domain == 'bubblemail.xyz':
         imap_server = 'imap.yandex.ru'
@@ -41,9 +41,6 @@ def fetch_emaiL_code(email, email_passwd, login_name, subject):
         imap_server = 'imap.mail.ru' # no full search support for this imap server
 
     date = datetime.datetime.today().strftime("%d-%b-%Y")
-    regexpr = r'login to account (?:.+):\s+(.+)\s+'
-    if 'Email address change request' in subject:
-        regexpr = r'to update your email address:\s+(.+)\s+'
 
     while True:
         try:
@@ -55,7 +52,7 @@ def fetch_emaiL_code(email, email_passwd, login_name, subject):
             mail_body = None
             while attempts < 20:
                 typ, msgnums = server.search(
-                    None, 'UNSEEN SINCE {} Subject "{}"'.format(date, subject))
+                    None, 'UNSEEN SINCE {}'.format(date, subject))
                 print(msgnums[0])
                 print(msgnums[0].split()[-1])
                 if msgnums[0]:
@@ -75,10 +72,6 @@ def fetch_emaiL_code(email, email_passwd, login_name, subject):
             print('Error while connecting to IMAP:', err)
             print('Reconnecting...')
             time.sleep(5)
-
-
-def fetch_email_code_tempmail():
-    pass
 
 
 def text_between(text: str, begin: str, end: str) -> str:

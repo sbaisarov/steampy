@@ -44,6 +44,11 @@ class ConfirmationExecutor:
     def send_markettrans_allow_request(self) -> dict:
         confirmations = self._get_confirmations()
         resp = self._multi_confimm_trans(confirmations)
+    
+    def confirm_email_change_confirmation(self):
+        confirmations = self._get_confirmations()
+        confirmation = self._select_email_confirmation(confirmations)
+        conf_status = self._confirm_trans(confirmation)
 
     def _confirm_trans(self, confirmation):
         tag = Tag.ALLOW
@@ -110,6 +115,13 @@ class ConfirmationExecutor:
                 't': timestamp,
                 'm': 'android',
                 'tag': tag_string}
+    
+    def _select_email_confirmation(self, confirmations: List[Confirmation]) -> Confirmation:
+        for confirmation in confirmations:
+            confirmation_details_page = self._fetch_confirmation_details_page(confirmation)
+            if "Request for account recovery" in confirmation_details_page:
+                return confirmation
+        raise ConfirmationExpected
 
     def _select_trade_offer_confirmation(self, confirmations: List[Confirmation]) -> Confirmation:
         for confirmation in confirmations:
