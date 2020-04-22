@@ -13,11 +13,10 @@ from bs4 import BeautifulSoup
 from steampy import guard
 from steampy.confirmation import ConfirmationExecutor
 from steampy.login import LoginExecutor, InvalidCredentials
+from steampy.guard import generate_one_time_code
 from steampy.utils import text_between, merge_items_with_descriptions_from_inventory, GameOptions, fetch_email_code, \
     steam_id_to_account_id, merge_items_with_descriptions_from_offers, get_description_key, \
     merge_items_with_descriptions_from_offer, account_id_to_steam_id
-
-from selenium.webdriver.common.action_chains import ActionChains
 
 logger = logging.getLogger('__main__')
 
@@ -347,14 +346,7 @@ class SteamClient:
                                                      str(self.mafile['Session']['SteamID']),
                                                      self._session)
         confirmation_executor._get_confirmations()
-    
-    def change_email(self, login, password, email, email_password, mafile, imap_host, driver):
-        mobile_client = SteamClient()
-        mobile_client.mobile_login(login, password, mafile)
-        confirmation_executor = ConfirmationExecutor('', self.mafile['identity_secret'],
-                                                     str(self.mafile['Session']['SteamID']),
-                                                     mobile_client._session)
-        confirmation_executor.confirm_email_change_confirmation()
+
 
     def decline_trade_offer(self, trade_offer_id: str) -> dict:
         params = {'key': self._api_key,

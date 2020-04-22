@@ -33,31 +33,23 @@ class GameOptions(enum.Enum):
 logger = logging.getLogger("__main__")
 
 
-def fetch_email_code(email, email_passwd, login_name, imap_server):
-    email_domain = email.partition('@')[2]
-    if email_domain == 'yandex.ru' or email_domain == 'bubblemail.xyz':
-        imap_server = 'imap.yandex.ru'
-    else:
-        imap_server = 'imap.mail.ru' # no full search support for this imap server
-
+def fetch_email_code(email, email_passwd, imap_server):
     date = datetime.datetime.today().strftime("%d-%b-%Y")
-
-    while True:
+    serving_attempts = 0
+    while serving_attempts < 10:
         try:
             server = IMAP4_SSL(imap_server)
             server.login(email, email_passwd)
             server.select()
-            time.sleep(10)
+            time.sleep(15)
             attempts = 0
             mail_body = None
             while attempts < 20:
                 typ, msgnums = server.search(
-                    None, 'UNSEEN SINCE {}'.format(date, subject))
-                print(msgnums[0])
-                print(msgnums[0].split()[-1])
+                    None, 'UNSEEN SINCE {}'.format(date))
                 if msgnums[0]:
-                    mail_body = server.fetch(msgnums[0].split()[-1], '(UID BODY[TEXT])')[1][0][1].decode('utf-8')
-                    if login_name in mail_body:
+                    mail_body = server.fetch(msgnums[0].split()[0], '(UID BODY[TEXT])')[1][0][1].decode('utf-8')
+                    if "to change the email address" in mail_body:
                         break
                 server.select()
                 time.sleep(15)
@@ -65,13 +57,17 @@ def fetch_email_code(email, email_passwd, login_name, imap_server):
 
             if not mail_body:
                 raise Exception('The email with the steam guard code was not found.')
-            guard_code = re.search(regexpr, mail_body).group(1).rstrip()
+            guard_code = re.search(r"\n([\d\w]{5})\r", mail_body).group(1).rstrip()
             print('Email found, guard code:', guard_code)
+            server.logout()
             return guard_code
         except (IMAP4.abort, IMAP4.error, ConnectionResetError) as err:
             print('Error while connecting to IMAP:', err)
             print('Reconnecting...')
             time.sleep(5)
+            serving_attempts += 1
+            
+    raise IMAP4.error("Bad connection with imap server")
 
 
 def text_between(text: str, begin: str, end: str) -> str:
