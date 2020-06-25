@@ -33,7 +33,7 @@ class GameOptions(enum.Enum):
 logger = logging.getLogger("__main__")
 
 
-def fetch_email_code(email, email_passwd, imap_server):
+def fetch_email_token(email, email_passwd, imap_server, token_name):
     date = datetime.datetime.today().strftime("%d-%b-%Y")
     serving_attempts = 0
     while serving_attempts < 10:
@@ -41,33 +41,39 @@ def fetch_email_code(email, email_passwd, imap_server):
             server = IMAP4_SSL(imap_server)
             server.login(email, email_passwd)
             server.select()
-            time.sleep(15)
-            attempts = 0
-            mail_body = None
-            while attempts < 20:
-                typ, msgnums = server.search(
-                    None, 'UNSEEN SINCE {}'.format(date))
-                if msgnums[0]:
-                    mail_body = server.fetch(msgnums[0].split()[0], '(UID BODY[TEXT])')[1][0][1].decode('utf-8')
-                    if "to change the email address" in mail_body:
-                        break
-                server.select()
-                time.sleep(15)
-                attempts += 1
-
-            if not mail_body:
-                raise Exception('The email with the steam guard code was not found.')
-            guard_code = re.search(r"\n([\d\w]{5})\r", mail_body).group(1).rstrip()
-            print('Email found, guard code:', guard_code)
-            server.logout()
-            return guard_code
         except (IMAP4.abort, IMAP4.error, ConnectionResetError) as err:
             print('Error while connecting to IMAP:', err)
             print('Reconnecting...')
             time.sleep(5)
             serving_attempts += 1
-            
-    raise IMAP4.error("Bad connection with imap server")
+            if serving_attempts == 10:
+                raise IMAP4.error("Bad connection with imap server")
+
+    time.sleep(15)
+    attempts = 0
+    mail_body = None
+    while attempts < 20:
+        typ, msgnums = server.search(
+            None, 'UNSEEN SINCE {}'.format(date))
+        if msgnums[0]:
+            mail_body = server.fetch(msgnums[0].split()[0], '(UID BODY[TEXT])')[1][0][1].decode('utf-8')
+            if "to change the email address" in mail_body:
+                break
+        server.select()
+        time.sleep(15)
+        attempts += 1
+
+    if not mail_body:
+        raise Exception('The email with the steam guard code was not found.')
+    if token_name == "guard":
+        guard_code = re.search(r"\n([\d\w]{5})\r", mail_body).group(1).rstrip()
+        print('Email found, guard code:', guard_code)
+        server.logout()
+        return guard_code
+    elif token_name == "link":
+        link = re.search(r'https://store.store.steampowered.com/(\w+?)">'), group()
+        server.logout()
+        return link
 
 
 def text_between(text: str, begin: str, end: str) -> str:
